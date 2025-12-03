@@ -39,13 +39,23 @@ else:
 # ENGINE WITH ADVANCED OPTIMIZATIONS
 # ============================================================================
 
+is_sqlite_url = settings.get_database_url().startswith("sqlite")
+
+execution_options: dict[str, object] = {
+    "compiled_cache_size": 500,  # Кеш скомпилированных запросов
+}
+
+# Для PostgreSQL явно выставляем уровень изоляции,
+# для SQLite используем значения по умолчанию драйвера.
+if not is_sqlite_url:
+    execution_options["isolation_level"] = "READ COMMITTED"
+
 engine = create_async_engine(
     settings.get_database_url(),
     poolclass=poolclass,
     echo=settings.DEBUG,
     future=True,
     **pool_kwargs,
-    
     connect_args={
         "server_settings": {
             "application_name": "remnawave_bot",
@@ -55,12 +65,8 @@ engine = create_async_engine(
         },
         "command_timeout": 60,
         "timeout": 10,
-    } if not settings.get_database_url().startswith("sqlite") else {},
-    
-    execution_options={
-        "isolation_level": "READ COMMITTED",  # Оптимальный для большинства случаев
-        "compiled_cache_size": 500,  # Кеш скомпилированных запросов
-    }
+    } if not is_sqlite_url else {},
+    execution_options=execution_options,
 )
 
 # ============================================================================
